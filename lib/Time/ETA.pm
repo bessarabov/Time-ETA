@@ -60,7 +60,7 @@ use YAML;
 my $true = 1;
 my $false = '';
 
-our $SERIALIZATION_API_VERSION = 2;
+our $SERIALIZATION_API_VERSION = 3;
 
 =head1 METHODS
 
@@ -95,6 +95,8 @@ sub new {
     $self->{_milestones} = $params{milestones};
     $self->{_passed_milestones} = 0;
     $self->{_start} = [gettimeofday];
+    $self->{_paused} = $false;
+    $self->{_paused_milestones} = 0;
 
     return $self;
 }
@@ -148,7 +150,8 @@ precise is the prediction.
 
 This method will die in case it haven't got enough information to calculate
 estimated time of accomplishment. The method will die untill pass_milestone()
-is run for the first time. AFter pass_milestone() run at least once,
+is run for the first time. After pass_milestone() run at least once after
+start or after resuming (in dependence of what has been happen later),
 get_remaining_seconds() has enouth data to caluate ETA. To find out if ETA can
 be calculated you can use method can_calculate_eta().
 
@@ -167,12 +170,12 @@ sub get_remaining_seconds {
 
     return 0 if $self->is_completed();
 
-    my $elapsed_before_milestone = tv_interval($self->{_start}, $self->{_miliestone_pass});
-    my $elapsed_after_milestone = tv_interval($self->{_miliestone_pass}, [gettimeofday()]);
+    my $elapsed_before_milestone = tv_interval($self->{_start}, $self->{_milestone_pass});
+    my $elapsed_after_milestone = tv_interval($self->{_milestone_pass}, [gettimeofday()]);
 
     my $remaining_milestones = $self->{_milestones} - $self->{_passed_milestones};
 
-    my $one_milestone_completion_time = $elapsed_before_milestone/$self->{_passed_milestones};
+    my $one_milestone_completion_time = $elapsed_before_milestone/($self->{_passed_milestones} - $self->{_paused_milestones});
     my $remaining_seconds = ($one_milestone_completion_time * $remaining_milestones) - $elapsed_after_milestone;
 
     return $remaining_seconds;
@@ -267,7 +270,8 @@ you have specified in the object new() constructor.
 
     $eta->pass_milestone();
 
-You need to run this method at least once to make method
+You need to run this method at least once after start or after resuming
+(in dependence of what has been happen later) to make method
 get_remaining_seconds() work.
 
 =cut
@@ -283,7 +287,7 @@ sub pass_milestone {
 
     my $dt = [gettimeofday];
 
-    $self->{_miliestone_pass} = $dt;
+    $self->{_milestone_pass} = $dt;
 
     if ($self->{_passed_milestones} == $self->{_milestones}) {
         $self->{_end} = $dt;
@@ -298,11 +302,12 @@ B<Get:> 1) $self
 
 B<Return:> $boolean
 
-This method returns bool value that that gives information if there is enough
+This method returns bool value that gives information if there is enough
 data in the object to calculate process estimated time of accomplishment.
 
 It will return true value if method pass_milestone() have been run at least
-once, if the method pass_milestone() haven't been run it will return false.
+once after start or after resuming (in dependence of what has been happen later),
+if the method pass_milestone() haven't been run it will return false.
 
 This method is used to check if it is safe to run method
 get_remaining_seconds(). Method get_remaining_seconds() dies in case there is
@@ -320,11 +325,95 @@ get_remaining_seconds() return 0.
 sub can_calculate_eta {
     my ($self) = @_;
 
-    if ($self->{_passed_milestones} > 0) {
+    if (($self->{_passed_milestones} - $self->{_paused_milestones}) > 0) {
         return $true;
     } else {
         return $false;
     }
+}
+
+=head2 pause
+
+B<Get:> 1) $self
+
+B<Return:> it returns nothing that can be used
+
+This method tells the object that execution of the task have been paused
+(i. e. it was interrupted). The knowledge is required to correctly
+calculate estimated time after resuming.
+
+The current algorithm calculates remaining time only on the base of
+milestones that passed after resuming.
+
+    $eta->pause();
+
+=cut
+
+sub pause {
+    my ($self) = @_;
+
+    $self->{_paused} = $true;
+    $self->{_paused_milestones} = $self->{_passed_milestones};
+
+    return $false;
+}
+
+=head2 is_paused
+
+B<Get:> 1) $self
+
+B<Return:> $boolean
+
+This method returns bool value that gives information if the object is paused
+and can be resumed.
+
+It will return true if method pause() has been run and no resume() method
+was run after that. Otherwise it will return false.
+
+This method is used to check whether it is safe to run method resume().
+Method resume() dies in the case the object is not paused.
+
+    if ( $eta->is_paused() ) {
+        $eta->resume();
+    }
+
+=cut
+
+sub is_paused {
+    my ($self) = @_;
+
+    return $self->{_paused};
+}
+
+=head2 resume
+
+B<Get:> 1) $self
+
+B<Return:> it returns nothing that can be used
+
+This method tells the object that execution of the task is continued
+after pause. The knowledge is required to correctly
+calculate estimated time.
+
+The current algorithm calculates remaining time only on the base of
+milestones that passed after resuming.
+
+    $eta->resume() if $eta->is_paused();
+
+If the eta is not paused and therefore the resuming is imposible,
+than the method dies.
+
+=cut
+
+sub resume {
+    my ($self, $string) = @_;
+
+    croak "The isn't paused. Can't resume. Stopped" if not $self->is_paused();
+
+    $self->{_start} = [gettimeofday];
+    $self->{_paused} = $false;
+
+    return $false;
 }
 
 =head2 serialize
@@ -353,8 +442,10 @@ sub serialize {
         _milestones => $self->{_milestones},
         _passed_milestones => $self->{_passed_milestones},
         _start  => $self->{_start},
-        _miliestone_pass => $self->{_miliestone_pass},
+        _milestone_pass => $self->{_milestone_pass},
         _end  => $self->{_end},
+        _paused => $self->{_paused},
+        _paused_milestones => $self->{_paused_milestones},
     };
 
     my $string = Dump($data);
@@ -422,10 +513,10 @@ sub spawn {
         );
     }
 
-    if (defined $data->{_miliestone_pass}) {
+    if (defined $data->{_milestone_pass}) {
         _check_gettimeofday(
             undef,
-            value => $data->{_miliestone_pass},
+            value => $data->{_milestone_pass},
             name => "last milestone pass time"
         );
     }
@@ -434,8 +525,10 @@ sub spawn {
         _milestones => $data->{_milestones},
         _passed_milestones => $data->{_passed_milestones},
         _start  => $data->{_start},
-        _miliestone_pass => $data->{_miliestone_pass},
+        _milestone_pass => $data->{_milestone_pass},
         _end  => $data->{_end},
+        _paused => $data->{_paused},
+        _paused_milestones => $data->{_paused_milestones},
     };
 
     bless $self, $class;
