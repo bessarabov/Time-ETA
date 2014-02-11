@@ -25,8 +25,11 @@ our @mocked_time = Time::HiRes::gettimeofday();
 my $microseconds_in_second = 1_000_000;
 
 {
+    no strict 'refs';
     no warnings 'redefine';
-    *Time::ETA::gettimeofday = \&Time::ETA::MockTime::gettimeofday;
+
+    my @packages_having_gettimeofday = grep {defined(&{$_ . '::gettimeofday'})} (map {s'\.pm''; s'/'::'g; $_} keys(%INC)), 'main';
+    *{$_ . '::gettimeofday'} = \&Time::ETA::MockTime::gettimeofday foreach @packages_having_gettimeofday;
 }
 
 =head1 sleep

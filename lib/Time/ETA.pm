@@ -405,8 +405,8 @@ sub resume {
     # Setting the start time
     # Start time is the current time minus time that has already pass
     my $timeofday = [gettimeofday];
-    my $start = ($timeofday->[0] + ($timeofday->[1] / 1_000_000)) - $self->{_elapsed};
-    $self->{_start} = [int($start), ($start - int($start)) * 1_000_000];
+    my $start = ($timeofday->[0] * 1_000_000 + $timeofday->[1]) - int($self->{_elapsed} * 1_000_000);
+    $self->{_start} = [int($start / 1_000_000), $start % 1_000_000];
 
     $self->{_elapsed} = 0;
     $self->{_is_paused} = $false;
