@@ -465,7 +465,7 @@ serialized object data and creates an object.
 The $string is created by the method serialized().
 
 spawn() die if $string is incorrect. You can check if it is possible to
-respawn object from a $string with the method can_cpawn().
+respawn object from a $string with the method can_spawn().
 
 =cut
 
