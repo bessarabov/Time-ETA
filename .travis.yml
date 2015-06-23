@@ -1,5 +1,5 @@
 language: perl
-install: cpanm --notest Test::Whitespaces Time::HiRes Capture::Tiny Test::Differences
+install: cpanm --notest YAML Test::Whitespaces Time::HiRes Capture::Tiny Test::Differences
 script: prove -l t xt/author
 perl:
   - "5.8"
