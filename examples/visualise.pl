@@ -44,8 +44,16 @@ sub output_object_info {
             type => 'number',
         },
         {
+            name => 'get_elapsed_time',
+            type => 'string',
+        },
+        {
             name => 'get_remaining_seconds',
             type => 'number',
+        },
+        {
+            name => 'get_remaining_time',
+            type => 'string',
         },
         {
             name => 'sum',
@@ -53,7 +61,7 @@ sub output_object_info {
         },
         {
             name => 'get_completed_percent',
-            type => 'percent',
+            type => 'string',
         },
         {
             name => 'is_completed',
@@ -104,8 +112,8 @@ sub output_object_info {
             $format_for_result = "   {<<<<<<<<<<<<<<}";
         } elsif ($m->{type} eq 'bool') {
             $format_for_result = "{>>>>>>>>>>>>>>}";
-        } elsif ($m->{type} eq 'percent') {
-            $format_for_result = "   {>>}";
+        } elsif ($m->{type} eq 'string') {
+            $format_for_result = "{>>>>>}";
         } else {
             croak "Unknown format";
         }

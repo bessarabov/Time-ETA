@@ -133,6 +133,30 @@ sub get_elapsed_seconds {
     return $elapsed_seconds;
 }
 
+=head2 get_elapsed_time
+
+B<Get:> 1) $self
+
+B<Return:> 1) $text_time - scalar with the text representation of elapsed
+time.
+
+Method return elapsed time in the form "H:MM:SS". For example it can return
+"11:54:12", it means that the process is running for 11 hours, 54 minutes and
+12 seconds.
+
+This method returns the same number as get_elapsed_seconds(), but in format
+that is easy for humans to understand.
+
+=cut
+
+sub get_elapsed_time {
+    my ($self) = @_;
+
+    my $time = $self->_get_time_from_seconds($self->get_elapsed_seconds());
+
+    return $time;
+}
+
 =head2 get_remaining_seconds
 
 B<Get:> 1) $self
