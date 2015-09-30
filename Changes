@@ -53,3 +53,7 @@ Revision history for Time::ETA
         * Move the gettimeofday redefinition to the MockTime package
         * Author tests need Test::Differences
         * Added WTERTIUS cpan name to CONTRIBUTORS section
+
+1.2.0   2015-09-30
+        [Minor]
+        * New method get_elapsed_time()
