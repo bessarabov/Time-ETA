@@ -89,6 +89,11 @@ The difference from version 2:
 =cut
 
 sub check_serialization_api_v_3 {
+    subtest('Not paused. Serialization api version 3.' => \&check_serialization_api_v_3_not_paused);
+    subtest('Paused. Serialization api version 3.' => \&check_serialization_api_v_3_paused);
+}
+
+sub check_serialization_api_v_3_not_paused {
     my ($seconds, $microseconds) = gettimeofday;
 
     my $seconds_in_the_past = $seconds - 4;
@@ -112,8 +117,33 @@ _version: 3
     my $percent = $eta->get_completed_percent();
     my $secs = $eta->get_remaining_seconds();
 
-    is($percent, 40, "Got expected percent from respawned object");
-    cmp_ok(abs($secs-6), "<", $precision, "Got expected remaining seconds from respawned object");
+    is($percent, 40, "Got expected percent from respawned object.");
+    cmp_ok(abs($secs-6), "<", $precision, "Got expected remaining seconds from respawned object.");
+}
+
+sub check_serialization_api_v_3_paused {
+    my ($seconds, $microseconds) = gettimeofday;
+
+    my $elapsed_seconds = 20;
+
+    my $string = "---
+_elapsed: $elapsed_seconds
+_end: ~
+_is_paused: 1
+_milestone_pass:
+  - $seconds
+  - $microseconds
+_milestones: 10
+_passed_milestones: 4
+_start: ~
+_version: 3
+";
+
+    my $eta = Time::ETA->spawn($string);
+
+    is($eta->get_completed_percent(), 40, "Got expected percent from respawned object.");
+    is($eta->get_elapsed_seconds(), $elapsed_seconds, "Got elapsed seconds from respawned object.");
+    is($eta->can_calculate_eta(), $false, "Can't calculate eta.");
 }
 
 sub main {

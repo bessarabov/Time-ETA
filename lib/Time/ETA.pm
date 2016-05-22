@@ -124,7 +124,9 @@ sub get_elapsed_seconds {
 
     my $elapsed_seconds;
 
-    if ($self->is_completed()) {
+    if ($self->is_paused()) {
+        $elapsed_seconds = $self->{_elapsed};
+    } elsif ($self->is_completed()) {
         $elapsed_seconds = tv_interval($self->{_start}, $self->{_end});
     } else {
         $elapsed_seconds = tv_interval($self->{_start}, [gettimeofday]);
@@ -347,7 +349,7 @@ get_remaining_seconds() return 0.
 sub can_calculate_eta {
     my ($self) = @_;
 
-    if ($self->{_passed_milestones} > 0) {
+    if (!$self->{_is_paused} && $self->{_passed_milestones} > 0) {
         return $true;
     } else {
         return $false;
@@ -373,8 +375,7 @@ sub pause {
 
     croak "The object is already paused. Can't pause paused. Stopped" if $self->is_paused();
 
-    my $elapsed_seconds = tv_interval($self->{_start}, [gettimeofday]);
-    $self->{_elapsed} += $elapsed_seconds;
+    $self->{_elapsed} += $self->get_elapsed_seconds();
     $self->{_start} = undef;
 
     $self->{_is_paused} = $true;
